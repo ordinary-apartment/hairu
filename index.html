@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#234b3d">
+  <meta name="description" content="置きたい場所の幅・奥行・高さと予算から、楽天市場の収納家具を探すHairu。">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https://*.rakuten.co.jp; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Hairu — そのすき間に、ぴったりの収納を。</title>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <a class="skip-link" href="#search-form">条件入力へ</a>
+  <header class="site-header wrap">
+    <a class="brand" href="./" aria-label="Hairu ホーム">Hairu<span class="brand-dot"></span></a>
+    <span class="header-note">暮らしのすき間に、いい収納。</span>
+    <a class="guide-link" href="#how-it-works">使い方 <span aria-hidden="true">↗</span></a>
+  </header>
+  <main class="wrap">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span></span> FIND YOUR FIT</p>
+        <h1 id="hero-title">そのすき間に、<br>ぴったりの収納を。</h1>
+        <p class="hero-description">置きたい場所のサイズと予算を入力するだけ。<br>あなたの暮らしに収まる家具を、楽天市場から。</p>
+        <p class="hero-caption">測る。見つける。すっきり暮らす。</p>
+      </div>
+      <div class="room-illustration" role="img" aria-label="収納棚を置く場所の幅・奥行・高さを測るイラスト">
+        <svg viewBox="0 0 520 350" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M50 273 290 338 479 255 249 207Z" fill="#e8e7da"/>
+          <path d="M85 244V44l212 32v219Z" fill="#efece0"/>
+          <path d="m297 76 126-45v216l-126 48Z" fill="#e4e6d8"/>
+          <path d="M297 76v219M85 244l212 51 126-48" fill="none" stroke="#c9ccb8"/>
+          <path d="m151 111 84 15 51-17-83-14Z" fill="#dbc69f"/>
+          <path d="m235 126 51-17v163l-51 21Z" fill="#bba782"/>
+          <path d="m151 111 84 15v167l-84-19Z" fill="#e0caa5"/>
+          <path d="m164 128 57 10v137l-57-12Z" fill="#846e53"/>
+          <path d="m164 173 57 11v8l-57-12Zm0 48 57 12v8l-57-12Z" fill="#dfc49c"/>
+          <path d="m171 146 10 2v25l-10-2Z" fill="#f5f0dc"/>
+          <path d="m184 139 9 2v34l-9-2Z" fill="#71896b"/>
+          <path d="m196 146 8 2v28l-8-2Z" fill="#c28c6d"/>
+          <path d="m207 143 9 2v33l-9-2Z" fill="#efe7d0"/>
+          <path d="m171 193 37 7v22l-37-8Z" fill="#e6e4d1"/>
+          <path d="m177 199 24 5" stroke="#a7aa91" stroke-width="2"/>
+          <path d="m170 242 42 9v20l-42-9Z" fill="#a6b2a0"/>
+          <path d="m185 256 12 3" stroke="#657d60" stroke-width="2"/>
+          <path d="m165 274 6 2v14l-6-1Zm58 14 6 2v13l-6-2Zm53-20 6-2v13l-6 2Z" fill="#846e53"/>
+          <path d="m196 99 16 3-3 16-9-2Z" fill="#d8bba0"/>
+          <path d="M204 103V79" stroke="#667f58" stroke-width="2"/>
+          <ellipse cx="198" cy="82" rx="8" ry="4" transform="rotate(35 198 82)" fill="#708762"/>
+          <ellipse cx="211" cy="77" rx="8" ry="4" transform="rotate(-35 211 77)" fill="#8da080"/>
+          <path d="m353 245 31 5-3 31-23-5Z" fill="#c9b69a"/>
+          <path d="M367 250v-58m0 24-14-16m14 3 17-17" stroke="#748567" stroke-width="3"/>
+          <ellipse cx="351" cy="197" rx="13" ry="7" transform="rotate(35 351 197)" fill="#91a082"/>
+          <ellipse cx="383" cy="185" rx="14" ry="7" transform="rotate(-35 383 185)" fill="#7c906e"/>
+          <ellipse cx="367" cy="192" rx="7" ry="12" fill="#a5b294"/>
+          <path d="M129 114v158m-5-158h10m-10 158h10m18 31 83 19m-83-24v10m83 8v11m15-17 51-22m-54 17 6 9m44-29 6 8" stroke="#55795f" stroke-width="1.6" fill="none"/>
+          <text x="96" y="190" font-size="12" fill="#45664f">高さ</text>
+          <text x="181" y="339" font-size="12" fill="#45664f">幅</text>
+          <text x="275" y="313" font-size="12" fill="#45664f">奥行</text>
+          <circle cx="431" cy="92" r="27" fill="#f8f8f0"/>
+          <path d="m420 92 7 7 14-15" fill="none" stroke="#55795f" stroke-width="2.5"/>
+        </svg>
+        <span class="illustration-label">A LITTLE SPACE, A BETTER HOME.</span>
+      </div>
+    </section>
+
+    <section class="search-panel" aria-labelledby="search-title">
+      <div class="panel-heading"><div><span class="step-label">01 / YOUR SPACE</span><h2 id="search-title">置けるサイズを教えてください。</h2></div><p>設置できる最大サイズを入力（cm）</p></div>
+      <form id="search-form">
+        <div class="measure-fields">
+          <label class="input-field" for="width"><span><span class="axis-symbol" aria-hidden="true">↔</span> 幅</span><span class="input-wrap"><input id="width" name="width" type="number" inputmode="decimal" min="0.1" max="1000" step="0.1" placeholder="80" required><span>cm</span></span></label>
+          <label class="input-field" for="depth"><span><span class="axis-symbol diagonal" aria-hidden="true">↔</span> 奥行</span><span class="input-wrap"><input id="depth" name="depth" type="number" inputmode="decimal" min="0.1" max="1000" step="0.1" placeholder="40" required><span>cm</span></span></label>
+          <label class="input-field" for="height"><span><span class="axis-symbol" aria-hidden="true">↕</span> 高さ</span><span class="input-wrap"><input id="height" name="height" type="number" inputmode="decimal" min="0.1" max="1000" step="0.1" placeholder="120" required><span>cm</span></span></label>
+          <label class="input-field budget-field" for="budget"><span><span class="axis-symbol" aria-hidden="true">¥</span> 予算の上限</span><span class="input-wrap"><input id="budget" name="budget" type="number" inputmode="numeric" min="1" max="999999999" step="1" placeholder="20000" required><span>円</span></span></label>
+        </div>
+        <div class="search-options">
+          <label class="category-label" for="category">家具の種類<select id="category" name="category"><option value="">すべての収納家具</option><option>カラーボックス</option><option>本棚</option><option>キャビネット</option><option>チェスト</option><option>収納ラック</option><option>隙間収納</option><option>シューズラック</option><option>キッチン収納</option></select></label>
+          <button class="search-button" id="search-button" type="submit"><span aria-hidden="true">⌕</span> この条件で探す <span aria-hidden="true">→</span></button>
+        </div>
+        <div class="form-bottom"><p>送料は予算に含みません。扉の開閉・搬入の余裕も確保してください。</p><button id="example-button" type="button">入力例を使う</button></div>
+      </form>
+    </section>
+
+    <section class="results-section" aria-labelledby="results-title">
+      <div class="results-heading"><div><span class="step-label">02 / FIND YOUR STORAGE</span><h2 id="results-title" tabindex="-1">あなたの空間に、収まるもの。</h2></div><span id="catalog-meta" class="catalog-meta">商品データを読み込み中…</span></div>
+      <div id="notice" class="notice" role="status" hidden></div>
+      <div id="error-panel" class="error-panel" role="alert" hidden><h3 id="error-title"></h3><p id="error-message"></p><button id="retry-button" type="button">データを再読み込み</button></div>
+      <div class="results-toolbar" id="results-toolbar" hidden><p id="results-count" role="status" aria-live="polite"></p><div class="toolbar-options"><label class="checkbox-label"><input id="include-unknown" type="checkbox" checked> サイズ要確認も表示</label><label class="sort-label" for="sort">並び順<select id="sort"><option value="price-asc">サイズ条件内を優先・価格の安い順</option><option value="price-desc">サイズ条件内を優先・価格の高い順</option></select></label></div></div>
+      <p id="conditions-summary" class="conditions-summary" hidden></p>
+      <div id="initial-state" class="empty-state"><span class="empty-icon" aria-hidden="true">↔</span><h3>「ここに置けたら」を、見つけよう。</h3><p>幅・奥行・高さと予算を入力して、収納探しをはじめましょう。</p><span class="small-note">楽天市場から定期取得した商品候補を検索します。</span></div>
+      <div id="empty-state" class="empty-state" hidden><span class="empty-icon" aria-hidden="true">⌕</span><h3>この条件に合う候補は見つかりませんでした。</h3><p>予算やサイズ、家具の種類を見直すか、<br>「サイズ要確認も表示」を試してください。</p><span class="small-note">取得済みの候補からの検索です。楽天市場全体の結果ではありません。</span></div>
+      <div id="products" class="product-grid"></div>
+      <button id="load-more" class="load-more" type="button" hidden>さらに表示する <span aria-hidden="true">↓</span></button>
+      <p id="price-note" class="price-note" hidden></p>
+    </section>
+
+    <section id="how-it-works" class="how-section" aria-labelledby="how-title"><div><span class="step-label">A SMALL GUIDE</span><h2 id="how-title">心地よく収めるために。</h2></div><div class="guide-items"><article><span>01</span><h3>余裕を持って測る</h3><p>幅・奥行・高さは設置場所の上限。巾木やコンセント、扉を開くスペースも忘れずに。</p></article><article><span>02</span><h3>記載サイズを確認する</h3><p>商品説明に明記された本体サイズを読み取ります。寸法の根拠は各商品の「サイズの記載箇所」で確認できます。</p></article><article><span>03</span><h3>商品ページで最終確認</h3><p>サイズの選択肢がある商品や寸法不明の商品は「サイズ要確認」。選ぶサイズ・価格・送料は楽天市場で確認してください。</p></article></div></section>
+  </main>
+  <footer class="site-footer wrap"><div><a class="brand" href="./">Hairu<span class="brand-dot"></span></a><p>暮らしのすき間に、いい収納。</p></div><div class="footer-info"><p>Hairuはordinary-apartmentが作成・運営しています。<br>価格・販売可能情報は変更される場合があります。購入時に楽天市場店舗に表示されている価格が適用されます。</p><a href="https://webservice.rakuten.co.jp/" target="_blank" rel="noopener noreferrer">Supported by Rakuten Developers</a><a href="https://www.rakuten.co.jp/" target="_blank" rel="noopener noreferrer">楽天市場 <span aria-hidden="true">↗</span></a></div></footer>
+  <noscript><p class="noscript">商品検索にはJavaScriptを有効にしてください。</p></noscript>
+</body>
+</html>

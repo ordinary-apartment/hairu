@@ -1,0 +1,19 @@
+{
+  "name": "hairu",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:ui": "playwright test",
+    "test:live": "node scripts/check-live.mjs",
+    "build": "node scripts/build.mjs",
+    "preview": "python3 -m http.server 4173 --directory dist"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}
