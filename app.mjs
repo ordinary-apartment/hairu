@@ -107,7 +107,16 @@ function productCard(item) {
     const details = element('details', 'evidence');
     details.append(element('summary', null, 'サイズの記載箇所'), element('p', null, `${item.dimensions.source}：${item.dimensions.evidence}`));
     body.append(sizes, details);
-  } else body.append(element('p', 'unknown-reason', item.dimensionReason || '商品ページで本体サイズを確認してください'));
+  } else {
+    body.append(element('p', 'unknown-reason', item.dimensionReason || '商品ページで本体サイズを確認してください'));
+    const evidence = Object.values(item.dimensionBounds ?? {}).flatMap(bound => bound.evidence);
+    if (evidence.length) {
+      const details = element('details', 'evidence');
+      details.append(element('summary', null, '確認できた寸法の記載'));
+      for (const text of new Set(evidence.map(evidence => `${evidence.source}：${evidence.text}`))) details.append(element('p', null, text));
+      body.append(details);
+    }
+  }
   const priceArea = element('div', 'price-area');
   const price = element('p', 'price', `¥${currency.format(item.price)}`);
   if (item.priceMax) price.append(element('small', null, `〜${currency.format(item.priceMax)}`));

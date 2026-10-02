@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { extractDimensionBounds } from '../../scripts/dimensions.mjs';
 
 const dimensions = { width: 60, depth: 30, height: 100, source: '商品説明', evidence: '本体サイズ:幅60×奥行30×高さ100cm' };
 const product = (id, price, dims, categories = ['本棚']) => ({ id, name: `収納家具 ${id}`, shop: 'テスト店舗', price, priceMax: null, url: `https://item.rakuten.co.jp/test/${id}/`, image: null, postageIncluded: false, categories, dimensions: dims, dimensionReason: dims ? null : '本体の幅・奥行・高さを確定できません' });
@@ -125,4 +126,24 @@ test('pagination appends candidates without losing priority', async ({ page }) =
   await page.locator('#load-more').click();
   await expect(page.locator('.product-card')).toHaveCount(30);
   await expect(page.locator('#load-more')).toBeHidden();
+});
+
+test('height 70 excludes clear partial height 180, while unknown and internal height remain', async ({ page }) => {
+  const high = { ...product('height180', 1000, null), name: '本棚 幅60 高さ180', dimensionBounds: extractDimensionBounds('本棚 幅60 高さ180', '') };
+  const unknown = { ...product('heightUnknown', 1000, null), name: '本棚 幅60', dimensionBounds: extractDimensionBounds('本棚 幅60', '') };
+  const inner = { ...product('inner180', 1000, null), name: '本棚 内寸 高さ180cm', dimensionBounds: extractDimensionBounds('本棚 内寸 高さ180cm', '') };
+  await mockCatalog(page, catalog({ items: [high, unknown, inner] }));
+  await page.goto('/');
+  for (const [id, value] of Object.entries({ width: '60.3', depth: '60.2', height: '70', budget: '20000' })) await page.locator(`#${id}`).fill(value);
+  await page.locator('#search-button').click();
+  await expect(page.locator('.product-card')).toHaveCount(2);
+  await expect(page.locator('#products')).not.toContainText('本棚 幅60 高さ180');
+  await expect(page.locator('#products')).toContainText('内寸 高さ180cm');
+  await page.locator('#height').fill('180');
+  await page.locator('#search-button').click();
+  await expect(page.locator('.product-card')).toHaveCount(3);
+  await expect(page.locator('.fit-badge.unknown')).toHaveCount(3);
+  const highCard = page.locator('.product-card').filter({ hasText: '本棚 幅60 高さ180' });
+  await highCard.getByText('確認できた寸法の記載').click();
+  await expect(highCard).toContainText('商品名：高さ180');
 });

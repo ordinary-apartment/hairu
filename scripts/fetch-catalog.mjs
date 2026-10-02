@@ -1,4 +1,4 @@
-import { extractDimensions, plainText } from './dimensions.mjs';
+import { extractDimensions, extractDimensionEvidence, plainText } from './dimensions.mjs';
 import { safeRakutenUrl, validateCatalog } from '../lib.mjs';
 
 export const ENDPOINT = 'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701';
@@ -53,6 +53,7 @@ export function normalizeItem(raw, category) {
     priceMax: Number.isFinite(priceMax) && priceMax > price ? priceMax : null,
     url, image, shop: plainText(raw.shopName), postageIncluded: Number(raw.postageFlag) === 0,
     categories: [category], ...extractDimensions(name, raw.itemCaption),
+    ...extractDimensionEvidence(name, raw.itemCaption, raw.catchcopy),
   };
 }
 

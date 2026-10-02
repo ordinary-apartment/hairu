@@ -17,6 +17,8 @@ export function searchProducts(items, conditions) {
     const price = item.priceMax ?? item.price;
     return Number.isFinite(price) && price > 0 && price <= conditions.budget &&
       (!conditions.category || item.categories.includes(conditions.category)) &&
+      (!item.dimensionBounds || Object.entries(item.dimensionBounds).every(([key, bound]) => bound.min <= conditions[key])) &&
+      (!item.dimensionOptions?.length || !item.dimensionOptions.every(option => Object.entries(option).some(([key, value]) => value > conditions[key]))) &&
       (!item.dimensions || ['width', 'depth', 'height'].every(key => item.dimensions[key] <= conditions[key])) &&
       (conditions.includeUnknown || item.dimensions);
   }).map(item => ({ ...item, fit: Boolean(item.dimensions) })).sort((a, b) =>
@@ -49,6 +51,13 @@ export function validateCatalog(data) {
         !safeRakutenUrl(item.url) || (item.image && !safeRakutenUrl(item.image, true)) ||
         (item.priceMax != null && (!Number.isFinite(item.priceMax) || item.priceMax < item.price)) ||
         (item.dimensions && (!['width', 'depth', 'height'].every(key => typeof item.dimensions[key] === 'number' && item.dimensions[key] > 0 && item.dimensions[key] <= 1000) || typeof item.dimensions.evidence !== 'string'))) throw new Error('INVALID_CATALOG');
+    if (item.dimensionBounds != null && (typeof item.dimensionBounds !== 'object' || Array.isArray(item.dimensionBounds) ||
+      Object.entries(item.dimensionBounds).some(([key, bound]) => !['width', 'depth', 'height'].includes(key) || !bound ||
+        !Number.isFinite(bound.min) || bound.min <= 0 || bound.min > 100000 || !Array.isArray(bound.values) || !bound.values.length ||
+        bound.values.some(value => !Number.isFinite(value) || value <= 0 || value > 100000) || Math.min(...bound.values) !== bound.min ||
+        !Array.isArray(bound.evidence) || !bound.evidence.length || bound.evidence.some(evidence => typeof evidence?.source !== 'string' || typeof evidence?.text !== 'string')))) throw new Error('INVALID_CATALOG');
+    if (item.dimensionOptions != null && (!Array.isArray(item.dimensionOptions) || item.dimensionOptions.some(option => !option || typeof option !== 'object' || Array.isArray(option) ||
+      Object.entries(option).some(([key, value]) => !['width', 'depth', 'height'].includes(key) || !Number.isFinite(value) || value <= 0 || value > 100000)))) throw new Error('INVALID_CATALOG');
   }
   return data;
 }

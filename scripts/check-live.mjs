@@ -37,13 +37,31 @@ try {
     await page.screenshot({ path: `test-results/live-${name}-results.png`, fullPage: true });
     await page.locator('#include-unknown').uncheck();
     assert.ok(!(await page.locator('#products').textContent()).includes('サイズ要確認'));
+    // Regression: incomplete but clearly high bookcases must not remain in the
+    // unknown group. Check every page, not just the first 24 displayed products.
+    const lowConditions = { width: 60.3, depth: 60.2, height: 70, budget: 999999999, includeUnknown: true, sort: 'price-asc', category: '' };
+    assert.ok(catalog.items.every(item => item.dimensionBounds != null));
+    const legacy = searchProducts(catalog.items.map(({ dimensionBounds, dimensionOptions, ...item }) => item), lowConditions);
+    const clear180 = legacy.filter(item => !item.dimensions && /高さ\s*180(?:cm|\s|$)/.test(item.name) && catalog.items.find(raw => raw.id === item.id)?.dimensionBounds.height?.min === 180);
+    assert.ok(clear180.length > 0, 'Live catalog must contain a real formerly-unknown height180 regression case.');
+    for (const key of ['width', 'depth', 'height', 'budget']) await page.locator(`#${key}`).fill(String(lowConditions[key]));
+    await page.locator('#include-unknown').check();
+    await page.locator('#search-button').click();
+    const lowMatches = searchProducts(catalog.items, lowConditions);
+    assert.ok(clear180.every(high => !lowMatches.some(item => item.id === high.id)));
+    assert.ok(lowMatches.every(item => !item.dimensionBounds.height || item.dimensionBounds.height.min <= 70));
+    while (await page.locator('#load-more').isVisible()) await page.locator('#load-more').click();
+    assert.equal(await page.locator('.product-card').count(), lowMatches.length);
+    const renderedLinks = await page.locator('.product-link').evaluateAll(links => links.map(link => link.href));
+    for (const high of clear180) assert.ok(!renderedLinks.includes(high.url));
+    await page.screenshot({ path: `test-results/live-${name}-height70.png`, fullPage: true });
     await page.locator('#budget').fill('1');
     await page.locator('#search-button').click();
     await page.locator('#empty-state').waitFor();
     assert.equal(await page.locator('.product-card').count(), 0);
     assert.deepEqual(errors, []);
     assert.deepEqual(apiRequests, []);
-    console.log(`${name}: live catalog ${catalog.items.length} items; explicit dimensions ${catalog.items.filter(item => item.dimensions).length}; example matches ${expected.length}; search/evidence/zero results/layout verified.`);
+    console.log(`${name}: live catalog ${catalog.items.length} items; height70 matches ${lowMatches.length}; formerly-unknown clear height180 excluded ${clear180.length}; all result pages/search/evidence/zero results/layout verified.`);
     await page.close();
   }
 } finally { await browser.close(); }
