@@ -1,5 +1,5 @@
 import { mkdir, copyFile, writeFile, readFile } from 'node:fs/promises';
-import { fetchCatalog, ensureNoSecrets, CATEGORIES } from './fetch-catalog.mjs';
+import { fetchCatalog, ensureNoSecrets, CATEGORIES, ApiFailure } from './fetch-catalog.mjs';
 
 const offline = process.argv.includes('--offline');
 const appId = process.env.RAKUTEN_APP_ID;
@@ -21,7 +21,10 @@ try {
   console.log(`Catalog: ${catalog.status}; ${catalog.items.length} items; ${catalog.items.filter(item => item.dimensions).length} with explicit body dimensions.`);
   for (const failure of catalog.failedCategories) console.log(`Category ${failure.category}: ${failure.code}`);
   if (catalog.status !== 'ok' && !offline) console.log('::warning::Rakuten catalog update incomplete; the public UI will display the availability status.');
-} catch {
-  console.error('Build failed safely. No credentials or request details were logged.');
+} catch (error) {
+  const allowedCodes = ['SECRET_IN_OUTPUT', 'INVALID_CATALOG'];
+  const code = (error instanceof ApiFailure && allowedCodes.includes(error.code)) ? error.code : error instanceof TypeError ? 'TYPE_ERROR' : error instanceof SyntaxError ? 'SYNTAX_ERROR' : 'BUILD_ERROR';
+  const location = String(error.stack ?? '').match(/(?:build|dimensions|fetch-catalog|lib)\.mjs:\d+:\d+/)?.[0] ?? 'unknown';
+  console.error(`Build failed safely: ${code} (${location}). No credentials or request details were logged.`);
   process.exitCode = 1;
 }
