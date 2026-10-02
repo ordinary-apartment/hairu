@@ -38,11 +38,17 @@ export async function updateCatalog(previous, { appId, accessKey, mode = 'discov
   let requests = 0;
   const countedRequest = async options => { requests++; return request(options); };
   const seen = new Set();
-  if (mode === 'discovery') {
+  // For a sizable catalog, up to 24 keyword-page requests can refresh many
+  // existing codes together. Ignore new codes in prices mode, then look up
+  // remaining IDs exactly. Small catalogs skip the bulk overhead entirely.
+  const bulk = mode === 'discovery' || base.size >= 60;
+  let batchSeen = 0;
+  if (bulk) {
     const discovered = await fetchCatalog({ appId, accessKey, request: countedRequest, sleep, categories, pages, now,
-      normalize: (raw, category) => refreshItem(raw, category, base.get(String(raw.itemCode)), at) });
-    if (discovered.status !== 'ok' || !discovered.items.length) throw new ApiFailure('INCOMPLETE_DISCOVERY');
+      normalize: (raw, category) => mode === 'prices' && !base.has(String(raw.itemCode)) ? null : refreshItem(raw, category, base.get(String(raw.itemCode)), at) });
+    if (discovered.status !== 'ok' || (mode === 'discovery' && !discovered.items.length)) throw new ApiFailure('INCOMPLETE_DISCOVERY');
     for (const item of discovered.items) { next.set(item.id, item); seen.add(item.id); }
+    batchSeen = seen.size;
   }
   // A limited keyword snapshot cannot prove disappearance or update every saved
   // product. Exact itemCode queries include unavailable products (availability=0).
@@ -70,7 +76,7 @@ export async function updateCatalog(previous, { appId, accessKey, mode = 'discov
   if (checked && missing === checked && !seen.size) throw new ApiFailure('EMPTY_UPDATE');
   const catalog = { ...previous, generatedAt: at, status: 'ok', failedCategories: [], items: [...next.values()],
     lastDiscoveryAt: mode === 'discovery' ? at : previous.lastDiscoveryAt ?? null,
-    lastPriceUpdateAt: at, update: { mode, requests, seen: seen.size, missing, added: [...next.keys()].filter(id => !base.has(id)).length } };
+    lastPriceUpdateAt: at, update: { mode, requests, batchSeen, individualChecks: checked, seen: seen.size, missing, added: [...next.keys()].filter(id => !base.has(id)).length } };
   return validateCatalog(catalog);
 }
 

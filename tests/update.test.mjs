@@ -136,3 +136,33 @@ test('missing source text aborts instead of overwriting safe dimension analysis 
   delete incomplete.itemCaption;
   await assert.rejects(updateCatalog(catalog(), options({ mode: 'prices', request: async () => ({ items: [incomplete], pageCount: 1 }) })), /INCOMPLETE_ITEM/);
 });
+
+test('sale bulk refresh saves calls, ignores new codes and exactly checks remaining saved IDs', async () => {
+  const items = Array.from({ length: 60 }, (_, index) => item(`shop:${index}`));
+  const previous = catalog(items);
+  let bulkCalls = 0;
+  let exactCalls = 0;
+  const updated = await updateCatalog(previous, options({ mode: 'prices', request: async ({ itemCode }) => {
+    if (itemCode) { exactCalls++; return { items: [raw(itemCode, { itemPrice: 3000 })], pageCount: 1 }; }
+    bulkCalls++;
+    return { items: [...Array.from({ length: 29 }, (_, i) => raw(`shop:${i}`, { itemPrice: 3000 })), raw('shop:new')], pageCount: 1 };
+  } }));
+  assert.equal(bulkCalls, 1);
+  assert.equal(exactCalls, 31);
+  assert.equal(updated.update.requests, 32);
+  assert.equal(updated.update.batchSeen, 29);
+  assert.equal(updated.update.individualChecks, 31);
+  assert.equal(updated.items.length, 60);
+  assert.equal(updated.items.some(i => i.id === 'shop:new'), false);
+  assert.ok(updated.items.every(i => i.price === 3000 && i.firstSeenAt === before && i.lastUpdatedAt === at));
+});
+
+test('partial sale bulk failure aborts rather than marking missing goods or publishing a partial price refresh', async () => {
+  const previous = catalog(Array.from({ length: 60 }, (_, i) => item(`shop:${i}`)));
+  const original = JSON.stringify(previous);
+  await assert.rejects(updateCatalog(previous, options({ mode: 'prices', categories: ['本棚', 'チェスト'], request: async ({ keyword }) => {
+    if (keyword === 'チェスト') throw new ApiFailure('HTTP_503');
+    return { items: [raw('shop:0')], pageCount: 1 };
+  } })), /INCOMPLETE_DISCOVERY/);
+  assert.equal(JSON.stringify(previous), original);
+});
