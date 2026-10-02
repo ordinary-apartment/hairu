@@ -37,7 +37,10 @@ export function extractDimensionEvidence(itemName, itemCaption, catchcopy = '') 
   let unspecifiedSizeOptions = false;
   for (const [source, raw] of [['商品名', itemName], ['キャッチコピー', catchcopy], ['商品説明', itemCaption]]) {
     const text = plainText(raw);
-    if (/サイズ選択|サイズが選べる|選べるサイズ|サイズ(?:を|が)?選べる|[2-9]サイズ/.test(text)) unspecifiedSizeOptions = true;
+    const sizeChoices = /サイズ選択|サイズが選べる|選べるサイズ|サイズ(?:を|が)?選べる|[2-9]サイズ/;
+    // Related-product/series links in a long caption are not SKU choices for
+    // the named product. Caption choices must belong to its body-size section.
+    if (source !== '商品説明' ? sizeChoices.test(text) : new RegExp(`(?:${positive.source}).{0,50}(?:${sizeChoices.source})`).test(text)) unspecifiedSizeOptions = true;
     for (const unknown of text.matchAll(/(横幅|幅|奥行き?|高さ|W|D|H)\s*[:約()]*\s*(?:不明|未記載|未定|要確認)/gi)) {
       const before = text.slice(Math.max(0, unknown.index - 100), unknown.index);
       const good = [...before.matchAll(positive)].at(-1);

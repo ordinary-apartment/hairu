@@ -86,6 +86,11 @@ test('unlisted size choices and explicitly unknown alternative heights stay unkn
 test('a specifically identified type with all title axes is not an unspecified choice', () => {
   assert.equal(results(item('隙間収納 8サイズ展開 | Bタイプ 幅15cm 奥行60cm 高さ180cm | キッチンワゴン')).length, 0);
 });
+test('related-series size choices cannot erase the named bookcase height', () => {
+  const product = item('本棚 完成品 フナモコ 幅75×高さ180cm CBS-75T', '関連商品一覧 8サイズ展開。別シリーズの収納家具もご覧ください。');
+  assert.equal(product.dimensionBounds.height.min, 180);
+  assert.equal(results(product).length, 0);
+});
 test('conflicting sources preserve all possible heights instead of choosing the largest', () => {
   const product = item('本棚 高さ180cm', '本体サイズ：高さ60cm');
   assert.deepEqual(product.dimensionBounds.height.values, [60, 180]);

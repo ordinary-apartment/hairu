@@ -3,6 +3,7 @@ import { chromium } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { validateCatalog, isFresh, searchProducts } from '../lib.mjs';
+import { extractDimensionBounds } from './dimensions.mjs';
 
 const baseURL = process.env.HAIRU_LIVE_URL || 'https://ordinary-apartment.github.io/hairu/';
 const browser = await chromium.launch({ channel: process.platform === 'darwin' ? 'chrome' : undefined });
@@ -42,7 +43,8 @@ try {
     const lowConditions = { width: 60.3, depth: 60.2, height: 70, budget: 999999999, includeUnknown: true, sort: 'price-asc', category: '' };
     assert.ok(catalog.items.every(item => item.dimensionBounds != null));
     const legacy = searchProducts(catalog.items.map(({ dimensionBounds, dimensionOptions, ...item }) => item), lowConditions);
-    const clear180 = legacy.filter(item => !item.dimensions && /高さ\s*180(?:cm|\s|$)/.test(item.name) && catalog.items.find(raw => raw.id === item.id)?.dimensionBounds.height?.min === 180);
+    const clear180 = legacy.filter(item => !item.dimensions && extractDimensionBounds(item.name, '', item.catchcopy).height?.min === 180 &&
+      !catalog.items.find(raw => raw.id === item.id)?.dimensionBounds.height?.values.some(value => value <= 70));
     assert.ok(clear180.length > 0, 'Live catalog must contain a real formerly-unknown height180 regression case.');
     for (const key of ['width', 'depth', 'height', 'budget']) await page.locator(`#${key}`).fill(String(lowConditions[key]));
     await page.locator('#include-unknown').check();
