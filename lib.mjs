@@ -1,9 +1,3 @@
-export const MAX_AGE_MS = 24 * 60 * 60 * 1000;
-export function isFresh(catalog, now = Date.now()) {
-  const age = now - Date.parse(catalog.generatedAt);
-  return Number.isFinite(age) && age >= -5 * 60 * 1000 && age < MAX_AGE_MS;
-}
-
 export function validConditions(conditions) {
   return ['width', 'depth', 'height', 'budget'].every(key => {
     const value = conditions[key];
@@ -15,7 +9,7 @@ export function searchProducts(items, conditions) {
   if (!validConditions(conditions)) throw new Error('INVALID_CONDITIONS');
   return items.filter(item => {
     const price = item.priceMax ?? item.price;
-    return Number.isFinite(price) && price > 0 && price <= conditions.budget &&
+    return item.availability !== 0 && Number.isFinite(price) && price > 0 && price <= conditions.budget &&
       (!conditions.category || item.categories.includes(conditions.category)) &&
       (!item.dimensionBounds || Object.entries(item.dimensionBounds).every(([key, bound]) => bound.min <= conditions[key])) &&
       (!item.dimensionOptions?.length || !item.dimensionOptions.every(option => Object.entries(option).some(([key, value]) => value > conditions[key]))) &&
@@ -45,7 +39,14 @@ export function validateCatalog(data) {
   if (!data || data.version !== 1 || !['ok', 'partial', 'unavailable'].includes(data.status) ||
       !Number.isFinite(Date.parse(data.generatedAt)) || !Array.isArray(data.items) ||
       !Array.isArray(data.failedCategories)) throw new Error('INVALID_CATALOG');
+  const ids = new Set();
   for (const item of data.items) {
+    if (ids.has(item?.id)) throw new Error('INVALID_CATALOG');
+    ids.add(item?.id);
+    for (const key of ['firstSeenAt', 'lastSeenAt', 'lastCheckedAt', 'lastUpdatedAt', 'priceChangedAt']) {
+      if (item[key] != null && !Number.isFinite(Date.parse(item[key]))) throw new Error('INVALID_CATALOG');
+    }
+    if (item.availability != null && ![0, 1].includes(item.availability)) throw new Error('INVALID_CATALOG');
     if (!item || typeof item.id !== 'string' || typeof item.name !== 'string' || typeof item.shop !== 'string' ||
         !Number.isFinite(item.price) || item.price <= 0 || !Array.isArray(item.categories) ||
         !safeRakutenUrl(item.url) || (item.image && !safeRakutenUrl(item.image, true)) ||

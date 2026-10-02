@@ -1,9 +1,9 @@
-import { isFresh, searchProducts, validConditions, validateCatalog } from './lib.mjs';
+import { searchProducts, validConditions, validateCatalog } from './lib.mjs';
 
 const $ = id => document.getElementById(id);
 const form = $('search-form');
 const currency = new Intl.NumberFormat('ja-JP');
-const dateFormat = new Intl.DateTimeFormat('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
+const dateFormat = new Intl.DateTimeFormat('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Tokyo' });
 let catalog = null;
 let conditions = null;
 let matches = [];
@@ -37,19 +37,18 @@ async function loadCatalog() {
   loading = true;
   $('retry-button').disabled = true;
   $('catalog-meta').textContent = '商品データを読み込み中…';
+  const previous = catalog;
   try {
     const response = await fetch(`./data/catalog.json?t=${Date.now()}`, { cache: 'no-store', signal: AbortSignal.timeout(20000) });
     if (!response.ok) throw new Error('FETCH_FAILED');
-    catalog = validateCatalog(await response.json());
+    const nextCatalog = validateCatalog(await response.json());
+    if (previous && (nextCatalog.status !== 'ok' || !nextCatalog.items.length)) throw new Error('INCOMPLETE_RELOAD');
+    catalog = nextCatalog;
     const updated = dateFormat.format(new Date(catalog.generatedAt));
     $('catalog-meta').textContent = `${currency.format(catalog.items.length)}件の候補 / 取得 ${updated}（日本時間）`;
     $('error-panel').hidden = true;
     if (catalog.status === 'unavailable') {
       showError('商品データを取得できませんでした。', '楽天APIの接続・認証・利用制限などにより取得できていません。定期更新後に再度お試しください。');
-      return false;
-    }
-    if (!isFresh(catalog)) {
-      showError('商品データの更新を待っています。', '取得から24時間を過ぎたため、古い価格を表示していません。定期更新後に再度お試しください。');
       return false;
     }
     $('notice').hidden = catalog.status !== 'partial';
@@ -58,6 +57,13 @@ async function loadCatalog() {
     if (conditions) renderResults();
     return true;
   } catch {
+    if (previous && previous.status !== 'unavailable') {
+      catalog = previous;
+      $('notice').hidden = false;
+      $('notice').textContent = '再読み込みに失敗しました。最後に読み込めた商品データを引き続き表示します。価格・在庫は楽天市場で確認してください。';
+      $('catalog-meta').textContent = `${currency.format(catalog.items.length)}件の候補 / 取得 ${dateFormat.format(new Date(catalog.generatedAt))}（日本時間）`;
+      return true;
+    }
     catalog = null;
     $('catalog-meta').textContent = '商品データを読み込めませんでした';
     showError('商品データを読み込めませんでした。', '通信状況を確認して再読み込みしてください。初回公開時は商品データの準備に数分かかる場合があります。');
@@ -120,7 +126,7 @@ function productCard(item) {
   const priceArea = element('div', 'price-area');
   const price = element('p', 'price', `¥${currency.format(item.price)}`);
   if (item.priceMax) price.append(element('small', null, `〜${currency.format(item.priceMax)}`));
-  priceArea.append(price, element('p', 'price-extra', `税込 / ${item.postageIncluded ? '送料込み（地域・条件は商品ページで確認）' : '送料別・送料は商品ページで確認'}`), element('p', 'updated-at', `価格取得 ${dateFormat.format(new Date(catalog.generatedAt))}（日本時間）`));
+  priceArea.append(price, element('p', 'price-extra', `税込 / ${item.postageIncluded ? '送料込み（地域・条件は商品ページで確認）' : '送料別・送料は商品ページで確認'}`), element('p', 'updated-at', `価格取得 ${dateFormat.format(new Date(item.lastUpdatedAt ?? catalog.generatedAt))}（日本時間）`));
   const link = element('a', 'product-link', '楽天市場で確認する');
   link.append(element('span', null, '↗'));
   link.href = item.url;
@@ -132,11 +138,7 @@ function productCard(item) {
 }
 
 function appendProducts() {
-  // Recheck expiry before rendering another page, including long-open tabs.
-  if (!catalog || !isFresh(catalog)) {
-    showError('商品データの更新を待っています。', '取得から24時間を過ぎたため、古い価格を表示していません。データを再読み込みしてください。');
-    return;
-  }
+  if (!catalog) return;
   const next = matches.slice(displayed, displayed + 24);
   $('products').append(...next.map(productCard));
   displayed += next.length;
@@ -145,7 +147,7 @@ function appendProducts() {
 }
 
 function renderResults() {
-  if (!catalog || catalog.status === 'unavailable' || !isFresh(catalog)) return;
+  if (!catalog || catalog.status === 'unavailable') return;
   conditions.includeUnknown = $('include-unknown').checked;
   conditions.sort = $('sort').value;
   matches = searchProducts(catalog.items, conditions);
@@ -164,8 +166,21 @@ function renderResults() {
   appendProducts();
 }
 
+// Text inputs have no spinner or wheel increment behavior; native page scrolling
+// stays untouched. Keep native required/pattern validation plus numeric bounds.
+function validateInput(input) {
+  const value = input.value;
+  const budget = input.id === 'budget';
+  const format = budget ? /^[0-9]+$/ : /^(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)$/;
+  const number = Number(value);
+  input.setCustomValidity(value && (!format.test(value) || number < (budget ? 1 : 0.1) || number > (budget ? 999999999 : 1000) || (!budget && Math.abs(number * 10 - Math.round(number * 10)) > 1e-8))
+    ? budget ? '予算は1〜999999999円の整数で入力してください。' : 'サイズは0.1〜1000cm、小数第1位までで入力してください。' : '');
+}
+for (const id of ['width', 'depth', 'height', 'budget']) $(id).addEventListener('input', event => validateInput(event.target));
+
 form.addEventListener('submit', async event => {
   event.preventDefault();
+  for (const id of ['width', 'depth', 'height', 'budget']) validateInput($(id));
   if (!form.reportValidity()) return;
   const input = Object.fromEntries(new FormData(form));
   const next = { width: Number(input.width), depth: Number(input.depth), height: Number(input.height), budget: Number(input.budget), category: input.category };
@@ -174,7 +189,7 @@ form.addEventListener('submit', async event => {
   $('search-button').setAttribute('aria-busy', 'true');
   try {
     await loadPromise;
-    if (!catalog || !isFresh(catalog) || catalog.status === 'unavailable') {
+    if (!catalog || catalog.status === 'unavailable') {
       loadPromise = loadCatalog();
       if (!await loadPromise) return;
     }
@@ -188,14 +203,11 @@ form.addEventListener('submit', async event => {
   }
 });
 $('example-button').addEventListener('click', () => {
-  for (const [key, value] of Object.entries({ width: 80, depth: 40, height: 120, budget: 20000 })) $(key).value = value;
+  for (const [key, value] of Object.entries({ width: 80, depth: 40, height: 120, budget: 20000 })) { $(key).value = value; validateInput($(key)); }
   $('width').focus();
 });
 $('retry-button').addEventListener('click', () => { loadPromise = loadCatalog(); });
 $('include-unknown').addEventListener('change', () => { if (conditions) renderResults(); });
 $('sort').addEventListener('change', () => { if (conditions) renderResults(); });
 $('load-more').addEventListener('click', appendProducts);
-setInterval(() => {
-  if (catalog && catalog.status !== 'unavailable' && !isFresh(catalog)) showError('商品データの更新を待っています。', '取得から24時間を過ぎたため、古い価格を表示していません。データを再読み込みしてください。');
-}, 60000);
 loadPromise = loadCatalog();

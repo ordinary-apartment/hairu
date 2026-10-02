@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { searchProducts, validConditions, isFresh, MAX_AGE_MS, safeRakutenUrl, validateCatalog } from '../lib.mjs';
+import { searchProducts, validConditions, safeRakutenUrl, validateCatalog } from '../lib.mjs';
 
 const size = { width: 80, depth: 40, height: 120, evidence: '本体サイズ：幅80×奥行40×高さ120cm' };
 const conditions = { width: 80, depth: 40, height: 120, budget: 20000, includeUnknown: true, sort: 'price-asc', category: '' };
@@ -29,12 +29,9 @@ test('invalid numeric conditions are rejected', () => {
   assert.equal(validConditions({ ...conditions, budget: 0.5 }), false);
   assert.throws(() => searchProducts([], { ...conditions, width: NaN }), /INVALID_CONDITIONS/);
 });
-test('24h expiry and invalid/future timestamps suppress stale prices', () => {
-  const now = Date.parse('2026-10-03T12:00:00Z');
-  assert.equal(isFresh({ generatedAt: new Date(now - MAX_AGE_MS + 1).toISOString() }, now), true);
-  assert.equal(isFresh({ generatedAt: new Date(now - MAX_AGE_MS).toISOString() }, now), false);
-  assert.equal(isFresh({ generatedAt: 'bad' }, now), false);
-  assert.equal(isFresh({ generatedAt: new Date(now + 600000).toISOString() }, now), false);
+test('old catalog remains searchable and known unavailable goods are retained but not recommended', () => {
+  const data = validateCatalog({ version: 1, status: 'ok', generatedAt: '2020-01-01T00:00:00Z', failedCategories: [], items: [product('old', 1000), product('unavailable', 1000, size, { availability: 0 })] });
+  assert.deepEqual(searchProducts(data.items, conditions).map(item => item.id), ['old']);
 });
 test('unsafe external product and image URLs cannot reach the DOM', () => {
   for (const url of ['javascript:alert(1)', 'https://item.rakuten.co.jp.evil.test/item', 'https://evil.test/item', 'http://item.rakuten.co.jp/item', 'https://user:pass@item.rakuten.co.jp/item']) assert.equal(safeRakutenUrl(url), null);

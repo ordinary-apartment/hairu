@@ -61,7 +61,7 @@ test('zero results and numeric validation display without breaking the page', as
   await page.locator('#width').fill('-1');
   await page.getByRole('button', { name: 'この条件で探す' }).click();
   await expect(page.locator('.product-card')).toHaveCount(0);
-  expect(await page.locator('#width').evaluate(node => node.validity.rangeUnderflow)).toBe(true);
+  expect(await page.locator('#width').evaluate(node => node.validity.customError)).toBe(true);
   await page.locator('#width').fill('80');
   await page.locator('#budget').fill('1');
   await page.getByRole('button', { name: 'この条件で探す' }).click();
@@ -95,12 +95,14 @@ test('partial API failure shows warning and successful products', async ({ page 
   await expect(page.locator('.product-card')).toHaveCount(3);
 });
 
-test('expired catalog never displays product prices', async ({ page }) => {
-  await mockCatalog(page, catalog({ generatedAt: new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString() }));
+test('old catalog remains searchable with original acquisition time and price disclaimer', async ({ page }) => {
+  await mockCatalog(page, catalog({ generatedAt: '2020-01-02T03:04:00Z' }));
   await page.goto('/');
-  await expect(page.locator('#error-title')).toContainText('更新を待っています');
   await search(page);
-  await expect(page.locator('.product-card')).toHaveCount(0);
+  await expect(page.locator('.product-card')).toHaveCount(3);
+  await expect(page.locator('#error-panel')).toBeHidden();
+  await expect(page.locator('#catalog-meta')).toContainText('2020');
+  await expect(page.locator('#price-note')).toContainText('楽天市場');
 });
 
 test('malformed catalog is a recoverable error; product text cannot execute HTML', async ({ page }) => {
@@ -146,4 +148,68 @@ test('height 70 excludes clear partial height 180, while unknown and internal he
   const highCard = page.locator('.product-card').filter({ hasText: '本棚 幅60 高さ180' });
   await highCard.getByText('確認できた寸法の記載').click();
   await expect(highCard).toContainText('商品名：高さ180');
+});
+
+
+test('numeric text fields have no spinner, allow typing and preserve wheel scrolling without value changes', async ({ page }) => {
+  await mockCatalog(page, catalog());
+  await page.goto('/');
+  for (const [id, value] of Object.entries({ width: '80.1', depth: '40.2', height: '120.3', budget: '20000' })) {
+    const input = page.locator(`#${id}`);
+    await expect(input).toHaveAttribute('type', 'text');
+    await expect(input).toHaveAttribute('inputmode', id === 'budget' ? 'numeric' : 'decimal');
+    await input.fill('');
+    await input.pressSequentially(value);
+    await input.scrollIntoViewIfNeeded();
+    await input.click();
+    const box = await input.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    const before = await page.evaluate(() => window.scrollY);
+    const delta = before > 0 ? -250 : 250;
+    await page.mouse.wheel(0, delta);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).not.toBe(before);
+    await expect(input).toHaveValue(value);
+    await input.press('ArrowUp');
+    await expect(input).toHaveValue(value);
+  }
+  await page.locator('#search-button').click();
+  await expect(page.locator('.product-card')).toHaveCount(3);
+  await expect(page.locator('#conditions-summary')).toContainText('幅 80.1 × 奥行 40.2 × 高さ 120.3');
+});
+
+test('numeric text validation rejects nonnumeric, out-of-range and fractional budget values; example clears errors', async ({ page }) => {
+  await mockCatalog(page, catalog());
+  await page.goto('/');
+  await page.locator('#example-button').click();
+  for (const [id, value] of [['width', '1001'], ['depth', 'abc'], ['height', '0'], ['height', '70.01'], ['budget', '1.5'], ['budget', '1000000000']]) {
+    await page.locator(`#${id}`).fill(value);
+    expect(await page.locator(`#${id}`).evaluate(node => node.checkValidity())).toBe(false);
+    await page.locator('#example-button').click();
+    expect(await page.locator(`#${id}`).evaluate(node => node.checkValidity())).toBe(true);
+  }
+  await page.locator('#search-button').click();
+  await expect(page.locator('.product-card')).toHaveCount(3);
+});
+
+test('per-item price timestamp is preserved separately from catalog update time', async ({ page }) => {
+  const data = catalog();
+  data.items[0].lastUpdatedAt = '2020-01-02T03:04:00Z';
+  await mockCatalog(page, data);
+  await page.goto('/');
+  await search(page);
+  await expect(page.locator('.updated-at').first()).toContainText('2020');
+});
+
+
+test('equivalent decimal formats retain number-input step validation', async ({ page }) => {
+  await mockCatalog(page, catalog());
+  await page.goto('/');
+  await page.locator('#example-button').click();
+  for (const value of ['.5', '60.30', '80.0', '1000']) {
+    await page.locator('#width').fill(value);
+    expect(await page.locator('#width').evaluate(node => node.checkValidity())).toBe(true);
+  }
+  await page.locator('#width').fill('60.30');
+  await page.locator('#search-button').click();
+  await expect(page.locator('#conditions-summary')).toContainText('幅 60.3');
 });

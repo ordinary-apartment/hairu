@@ -1,10 +1,8 @@
-name: Update catalog and deploy Hairu
+name: Deploy Hairu site
 on:
   push:
     branches: [main]
   workflow_dispatch:
-  schedule:
-    - cron: '17 */6 * * *'
 permissions:
   contents: read
 concurrency:
@@ -26,11 +24,9 @@ jobs:
       - run: node scripts/build.mjs --offline
       - run: npx playwright install --with-deps chromium
       - run: npm run test:ui
-      - name: Fetch furniture with repository secrets
-        run: npm run build
-        env:
-          RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
-          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+      - name: Restore last published catalog (no Rakuten API calls)
+        run: node scripts/restore-catalog.mjs
+      - run: node scripts/build.mjs --catalog state/catalog.json
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

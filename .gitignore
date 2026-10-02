@@ -6,3 +6,5 @@ dist/
 api-observation.json
 test-results/
 playwright-report/
+
+state/

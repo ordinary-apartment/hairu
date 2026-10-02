@@ -2,15 +2,15 @@
 import { chromium } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import assert from 'node:assert/strict';
-import { validateCatalog, isFresh, searchProducts } from '../lib.mjs';
+import { validateCatalog, searchProducts } from '../lib.mjs';
 import { extractDimensionBounds } from './dimensions.mjs';
 
 const baseURL = process.env.HAIRU_LIVE_URL || 'https://ordinary-apartment.github.io/hairu/';
 const browser = await chromium.launch({ channel: process.platform === 'darwin' ? 'chrome' : undefined });
 try {
   await mkdir('test-results', { recursive: true });
-  for (const [name, width, height] of [['desktop', 1440, 1000], ['mobile', 390, 844]]) {
-    const page = await browser.newPage({ viewport: { width, height }, reducedMotion: 'reduce', isMobile: name === 'mobile', hasTouch: name === 'mobile' });
+  for (const [name, width, height] of [['desktop', 1440, 1000], ['mobile', 390, 844], ['tablet', 820, 1180]]) {
+    const page = await browser.newPage({ viewport: { width, height }, reducedMotion: 'reduce', isMobile: name !== 'desktop', hasTouch: name !== 'desktop' });
     const errors = [];
     const apiRequests = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -18,7 +18,6 @@ try {
     const dataResponse = await page.request.get(`${baseURL}data/catalog.json?t=${Date.now()}`);
     assert.equal(dataResponse.status(), 200);
     const catalog = validateCatalog(await dataResponse.json());
-    assert.ok(isFresh(catalog));
     assert.equal(catalog.status, 'ok');
     assert.ok(catalog.items.length > 0);
     assert.ok(catalog.items.some(item => item.dimensions));
@@ -26,6 +25,20 @@ try {
     await page.locator('#catalog-meta').filter({ hasText: '件の候補' }).waitFor();
     await page.screenshot({ path: `test-results/live-${name}-initial.png`, fullPage: true });
     await page.locator('#example-button').click();
+    for (const id of ['width', 'depth', 'height', 'budget']) {
+      const input = page.locator(`#${id}`);
+      assert.equal(await input.getAttribute('type'), 'text');
+      assert.equal(await input.getAttribute('inputmode'), id === 'budget' ? 'numeric' : 'decimal');
+      await input.scrollIntoViewIfNeeded();
+      await input.click();
+      const value = await input.inputValue();
+      const box = await input.boundingBox();
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      const before = await page.evaluate(() => window.scrollY);
+      await page.mouse.wheel(0, before > 0 ? -250 : 250);
+      await page.waitForFunction(previous => window.scrollY !== previous, before);
+      assert.equal(await input.inputValue(), value);
+    }
     await page.locator('#search-button').click();
     const expected = searchProducts(catalog.items, { width: 80, depth: 40, height: 120, budget: 20000, includeUnknown: true, sort: 'price-asc', category: '' });
     assert.ok(expected.some(item => item.fit));

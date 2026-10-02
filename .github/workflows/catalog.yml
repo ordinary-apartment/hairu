@@ -1,0 +1,70 @@
+name: Update Hairu catalog
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'discovery: monthly exploration; prices: existing products only'
+        type: choice
+        options: [discovery, prices]
+        default: discovery
+  schedule:
+    - cron: '17 3 1 * *' # Every month on day 1, 12:17 JST
+    # For an explicitly approved sale period, add a daily cron and route it
+    # to prices below. Never infer a sale from dates or API prices.
+permissions:
+  contents: read
+concurrency:
+  group: hairu-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - run: npm test
+      - run: node scripts/build.mjs --offline
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ui
+      - name: Restore last complete published catalog
+        run: node scripts/restore-catalog.mjs
+      - name: Incrementally update catalog (transactional)
+        run: node scripts/update-catalog.mjs state/catalog.json state/updated.json "$UPDATE_MODE"
+        env:
+          UPDATE_MODE: ${{ inputs.mode || 'discovery' }}
+          RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+      - name: Build public assets with secret-output checks
+        run: node scripts/build.mjs --catalog state/updated.json
+        env:
+          RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hairu-catalog-state
+          path: state/updated.json
+          retention-days: 90
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+          retention-days: 1
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
