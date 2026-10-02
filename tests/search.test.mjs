@@ -41,6 +41,10 @@ test('unsafe external product and image URLs cannot reach the DOM', () => {
   assert.ok(safeRakutenUrl('https://item.rakuten.co.jp/shop/item/'));
   assert.ok(safeRakutenUrl('https://thumbnail.image.rakuten.co.jp/image/', true));
 });
+test('application tracking identifiers are removed from public URLs', () => {
+  assert.equal(safeRakutenUrl('https://item.rakuten.co.jp/shop/item/?rafcid=test-app-only&scid=test-access-only#test-app-only'), 'https://item.rakuten.co.jp/shop/item/');
+  assert.equal(safeRakutenUrl('https://thumbnail.image.rakuten.co.jp/image/?_ex=128x128&applicationId=test-app-only', true), 'https://thumbnail.image.rakuten.co.jp/image/?_ex=128x128');
+});
 test('malformed catalog cannot silently present broken product data', () => {
   const data = { version: 1, status: 'ok', generatedAt: new Date().toISOString(), failedCategories: [], items: [product('a', 1000)] };
   assert.equal(validateCatalog(data), data);

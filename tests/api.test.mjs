@@ -47,6 +47,11 @@ test('normalizer whitelists public fields and rejects unavailable/unsafe product
   for (const override of [{ availability: 0 }, { taxFlag: 1 }, { itemUrl: 'javascript:alert(1)' }, { itemPrice: -1 }, { itemName: '専用天板' }]) assert.equal(normalizeItem({ ...raw, ...override }, '本棚'), null);
   assert.equal(normalizeItem({ ...raw, mediumImageUrls: [{ imageUrl: raw.mediumImageUrls[0] }] }, '本棚').image, raw.mediumImageUrls[0]);
 });
+test('API tracking URLs cannot copy credentials into the public catalog', () => {
+  const item = normalizeItem({ ...raw, itemUrl: `${raw.itemUrl}?rafcid=${credentials.appId}` }, '本棚');
+  ensureNoSecrets(JSON.stringify(item), [credentials.appId, credentials.accessKey]);
+  assert.equal(item.url, raw.itemUrl);
+});
 test('catalog deduplicates products across categories and reports partial failure', async () => {
   const catalog = await fetchCatalog({ ...credentials, sleep, categories: ['本棚', 'チェスト', 'キャビネット'], request: async ({ keyword }) => {
     if (keyword === 'キャビネット') throw new ApiFailure('HTTP_429');

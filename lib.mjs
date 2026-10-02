@@ -27,8 +27,15 @@ export function searchProducts(items, conditions) {
 export function safeRakutenUrl(value, image = false) {
   try {
     const url = new URL(value);
-    return url.protocol === 'https:' && !url.username && !url.password &&
-      (image ? url.hostname === 'thumbnail.image.rakuten.co.jp' || url.hostname.endsWith('.rakuten.co.jp') : url.hostname === 'item.rakuten.co.jp') ? url.href : null;
+    if (url.protocol !== 'https:' || url.username || url.password ||
+      !(image ? url.hostname === 'thumbnail.image.rakuten.co.jp' || url.hostname.endsWith('.rakuten.co.jp') : url.hostname === 'item.rakuten.co.jp')) return null;
+    // API links can carry application tracking identifiers. Publish canonical item
+    // URLs only; images retain just the documented size query, never tracking fields.
+    const size = image ? url.searchParams.get('_ex') : null;
+    url.search = '';
+    url.hash = '';
+    if (size && /^\d{1,4}x\d{1,4}$/.test(size)) url.searchParams.set('_ex', size);
+    return url.href;
   } catch { return null; }
 }
 
